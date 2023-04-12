@@ -2330,7 +2330,10 @@ const getRubyGemsMetadata = async function (pkgList) {
       });
       let body = res.body;
       if (body && body.length) {
-        body = body[0];
+        const strict = body.filter((i) => {
+          return i.number === p.version;
+        })
+        body = strict.length ? strict[0] : body[0];
       }
       p.description = body.description || body.summary || "";
       if (body.licenses) {
