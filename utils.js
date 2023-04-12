@@ -122,6 +122,36 @@ function getLicenses(pkg, format = "xml") {
 }
 exports.getLicenses = getLicenses;
 
+async function findLicenseOnClearlyDefinedIo(p, type, provider) {
+  try {
+    const pkgUrl =
+        "https://api.clearlydefined.io/definitions/" +
+        type +
+        "/" +
+        provider +
+        "/" +
+        (p.group || "-") +
+        "/" +
+        p.name +
+        "/" +
+        p.version;
+    const res = await got.get(pkgUrl, {
+      responseType: "json"
+    });
+    if (res && res.body) {
+      const body = res.body;
+      if (body.licensed && body.licensed.declared) {
+        return findLicenseId(body.licensed.declared);
+      }
+    }
+  } catch (err) {
+    if (DEBUG_MODE) {
+      console.error("Error fetching maven artifact license", err);
+    }
+  }
+  return undefined;
+}
+
 /**
  * Tries to find a file containing the license text based on commonly
  * used naming and content types. If a candidate file is found, add
@@ -1564,6 +1594,9 @@ const getMvnMetadata = async function (pkgList) {
           p.license = [findLicenseId(l.name._)];
         }
       }
+      if (!p.license && process.env.USE_CLEARLY_DEFINED) {
+        p.license = await findLicenseOnClearlyDefinedIo(p, "maven", "mavencentral");
+      }
       p.publisher =
         bodyJson.organization && bodyJson.organization.name
           ? bodyJson.organization.name._
@@ -1650,6 +1683,9 @@ const getPyMetadata = async function (pkgList, fetchIndirectDeps) {
       const body = res.body;
       p.description = body.info.summary;
       p.license = findLicenseId(body.info.license);
+      if (!p.license && process.env.USE_CLEARLY_DEFINED) {
+        p.license = await findLicenseOnClearlyDefinedIo(p, "pypi", "pypi");
+      }
       if (body.info.home_page) {
         if (body.info.home_page.indexOf("git") > -1) {
           p.repository = { url: body.info.home_page };
@@ -2338,6 +2374,9 @@ const getRubyGemsMetadata = async function (pkgList) {
       p.description = body.description || body.summary || "";
       if (body.licenses) {
         p.license = body.licenses;
+      }
+      if (!p.license && process.env.USE_CLEARLY_DEFINED) {
+        p.license = await findLicenseOnClearlyDefinedIo(p, "gem", "rubygems");
       }
       if (body.metadata) {
         if (body.metadata.source_code_uri) {
