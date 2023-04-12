@@ -220,6 +220,15 @@ const getNpmMetadata = async function (pkgList) {
       }
       p.description = body.description;
       p.license = body.license;
+      if (!p.license && body.versions && body.versions[p.version]) {
+        const versionInfo = body.versions[p.version];
+        p.license = versionInfo.license;
+        if (!p.license && versionInfo.licenses) {
+          p.license = versionInfo.licenses.map((l) => {
+            return findLicenseId(l.type);
+          });
+        }
+      }
       if (body.repository && body.repository.url) {
         p.repository = { url: body.repository.url };
       }
