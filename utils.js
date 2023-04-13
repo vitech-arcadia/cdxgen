@@ -135,6 +135,9 @@ async function findLicenseOnClearlyDefinedIo(p, type, provider) {
         p.name +
         "/" +
         p.version;
+    if (DEBUG_MODE) {
+      console.log(`Querying ${pkgUrl}`);
+    }
     const res = await got.get(pkgUrl, {
       responseType: "json"
     });
